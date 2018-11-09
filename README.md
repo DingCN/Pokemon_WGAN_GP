@@ -8,7 +8,7 @@ This is a WGAN_GP implementation for generating new pokemon. Codes are modified 
 
 
 ## Existing Code References:
-Some codes are based on the links below:  
+Some codes are based on links below:  
 [Using WGAN to generate pokemon](https://github.com/moxiegushi/pokeGAN)  
 [Using DCGAN to generate pokemon](https://github.com/kvpratama/gan/tree/master/pokemon)  
 [GAN implementation collection](https://github.com/hwalsuklee/tensorflow-generative-model-collections)
