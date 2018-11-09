@@ -1,7 +1,7 @@
 # Generating Pokemon with WGAN-GP
 
 ## Overview
-This is a WGAN_GP implementation for using WGAN-GP to generate new pokemon(trying to). The dataset are from [this Kaggle link](https://www.kaggle.com/kvpratama/pokemon-images-dataset) and from [moxiegushi's github](https://github.com/moxiegushi/pokeGAN)
+This is a WGAN_GP implementation for generating new pokemon. Codes are modified from [WGAN implementation](https://github.com/moxiegushi/pokeGAN). The dataset images are from [this Kaggle link](https://www.kaggle.com/kvpratama/pokemon-images-dataset) and from [moxiegushi's github](https://github.com/moxiegushi/pokeGAN)
 
 ## Result
 
