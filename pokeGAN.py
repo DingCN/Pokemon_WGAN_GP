@@ -159,11 +159,9 @@ def discriminator(input, is_train, reuse=False):
         b2 = tf.get_variable('b2', shape=[1], dtype=tf.float32,
                              initializer=tf.constant_initializer(0.0))
 
-        # wgan just get rid of the sigmoid
+
         logits = tf.add(tf.matmul(fc1, w2), b2, name='logits')
-        # dcgan
-        acted_out = tf.nn.sigmoid(logits)
-        return logits #, acted_out
+        return logits
 
 
 def train():
@@ -203,7 +201,6 @@ def train():
     image_batch, samples_num = process_data()
     
     batch_num = int(samples_num / batch_size)
-    total_batch = 0
     sess = tf.Session()
     saver = tf.train.Saver()
     sess.run(tf.global_variables_initializer())
@@ -241,7 +238,7 @@ def train():
 
             # print 'train:[%d/%d],d_loss:%f,g_loss:%f' % (i, j, dLoss, gLoss)
             
-        # save check point every 500 epoch
+        # save check point every epoch
         if not os.path.exists('./model/' + version):
             os.makedirs('./model/' + version)
         saver.save(sess, './model/' +version + '/' + str(i))  
