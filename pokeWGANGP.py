@@ -11,11 +11,12 @@ import random
 import scipy.misc
 from utils import *
 from tensorflow.contrib.gan.python.losses.python.losses_impl import *
-
+from tensorboardX import SummaryWriter
+import imageio
 slim = tf.contrib.slim
 
 
-dataset = 'mnist'
+dataset = 'pokemon'
 if dataset == 'mnist':
     HEIGHT, WIDTH, CHANNEL = 28, 28, 1
 else:
@@ -192,12 +193,24 @@ def train():
     real_result = discriminator(real_image, is_train)
     fake_result = discriminator(fake_image, is_train, reuse=True)
     
-    d_loss = tf.reduce_mean(fake_result) - tf.reduce_mean(real_result)  # This optimizes the discriminator.
+    d_loss = tf.reduce_mean(fake_result) - tf.reduce_mean(real_result)
     g_loss = -tf.reduce_mean(fake_result)  # This optimizes the generator.
             
     ###### Adding gradient penalty
-    gradient_penalty = wasserstein_gradient_penalty(real_image, fake_image, [random_input, random_dim], discriminator, 'None')
-    d_loss += 0.25 * gradient_penalty
+    # gradient_penalty = wasserstein_gradient_penalty(real_image, fake_image, [random_input, random_dim], discriminator, 'None')
+    # d_loss += 0.25 * gradient_penalty
+    alpha = tf.random_uniform(
+        shape=[BATCH_SIZE,1,1,1],
+        minval=0.,
+        maxval=1.
+    )
+    LAMBDA = 10  # Gradient penalty lambda hyperparameter
+    differences = fake_image - real_image
+    interpolates = real_image + (alpha*differences)
+    gradients = tf.gradients(discriminator(interpolates, is_train, reuse=True), [interpolates])[0]
+    slopes = tf.sqrt(tf.reduce_sum(tf.square(gradients), reduction_indices=[1]))
+    gradient_penalty = tf.reduce_mean((slopes-1.)**2)
+    d_loss += LAMBDA*gradient_penalty
 
     t_vars = tf.trainable_variables()
     d_vars = [var for var in t_vars if 'dis' in var.name]
@@ -207,6 +220,7 @@ def train():
                 .minimize(d_loss, var_list=d_vars)
     trainer_g = tf.train.AdamOptimizer(learning_rate*5, beta1=beta1) \
                 .minimize(g_loss, var_list=g_vars)
+
 
 
     
@@ -224,7 +238,14 @@ def train():
     saver.restore(sess, save_path)
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
-
+    #record losses and scores in tensorboard
+    tensorboard_dst = './tensorboard'
+    if not (os.path.exists(tensorboard_dst)):
+        os.mkdir(tensorboard_dst)
+    diagram_loss_d = SummaryWriter(tensorboard_dst)
+    diagram_loss_g = SummaryWriter(tensorboard_dst)
+    diagram_score_mean = SummaryWriter(tensorboard_dst)
+    diagram_score_std = SummaryWriter(tensorboard_dst)
     print('total training sample num:%d' % samples_num)
     print('batch size: %d, batch num per epoch: %d, epoch num: %d' % (batch_size, batch_num, EPOCH))
     print('start training...')
@@ -255,9 +276,10 @@ def train():
                     train_image = sess.run(image_batch)
 
                     # Update the discriminator
+#                    _, dLoss = sess.run([trainer_d, d_loss],
+#                                        feed_dict={random_input: train_noise, is_train: True})
                     _, dLoss = sess.run([trainer_d, d_loss],
                                         feed_dict={random_input: train_noise, real_image: train_image, is_train: True})
-
 
                 # Update the generator
                 for k in range(g_iters):
@@ -267,21 +289,36 @@ def train():
 
             # print 'train:[%d/%d],d_loss:%f,g_loss:%f' % (i, j, dLoss, gLoss)
             
-        # save check point every epoch
-        if not os.path.exists('./model/' + version):
-            os.makedirs('./model/' + version)
-        saver.save(sess, './model/' +version + '/' + str(i))  
+        # save check point every 500 epoch
+        if i%500 == 0:
+            if not os.path.exists('./model/' + version):
+                os.makedirs('./model/' + version)
+            saver.save(sess, './model/' +version + '/' + str(i))  
+        if i%50 == 0:
+            # save images
+            if not os.path.exists(newPoke_path):
+                os.makedirs(newPoke_path)
+            sample_noise = np.random.uniform(-1.0, 1.0, size=[batch_size, random_dim]).astype(np.float32)
+            imgtest = sess.run(fake_image, feed_dict={random_input: sample_noise, is_train: False})
+            # imgtest = imgtest * 255.0
+            # imgtest.astype(np.uint8)
+            save_images(imgtest, [8,8] ,newPoke_path + '/epoch' + str(i) + '.jpg')
+            
+            print('train:[%d],d_loss:%f,g_loss:%f' % (i, dLoss, gLoss))
+            diagram_loss_d.add_scalar('Discriminator Loss', dLoss, i)
+            diagram_loss_g.add_scalar('Generator Loss', gLoss, i)
+            score_mean, score_std = get_inception_score(imgtest)
+            diagram_score_mean.add_scalar('Inception Score Mean', score_mean, i)
+            diagram_score_std.add_scalar('Inception Score Standard Mean', score_std, i)
 
-        # save images
-        if not os.path.exists(newPoke_path):
-            os.makedirs(newPoke_path)
-        sample_noise = np.random.uniform(-1.0, 1.0, size=[batch_size, random_dim]).astype(np.float32)
-        imgtest = sess.run(fake_image, feed_dict={random_input: sample_noise, is_train: False})
-        # imgtest = imgtest * 255.0
-        # imgtest.astype(np.uint8)
-        save_images(imgtest, [8,8] ,newPoke_path + '/epoch' + str(i) + '.jpg')
-        
-        print('train:[%d],d_loss:%f,g_loss:%f' % (i, dLoss, gLoss))
+    diagram_loss_d.file_writer.flush()
+    diagram_loss_g.file_writer.flush()
+    diagram_score_mean.file_writer.flush()
+    diagram_score_std.file_writer.flush()
+    diagram_loss_d.file_writer.close()
+    diagram_loss_g.file_writer.close()
+    diagram_score_mean.file_writer.close()
+    diagram_score_std.file_writer.close()
     coord.request_stop()
     coord.join(threads)
 
