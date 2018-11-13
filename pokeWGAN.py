@@ -199,9 +199,13 @@ def train():
     sess.run(tf.global_variables_initializer())
     sess.run(tf.local_variables_initializer())
     # continue training
-    save_path = saver.save(sess, "/tmp/model.ckpt")
+    #save_path = saver.save(sess, "/tmp/model.ckpt")
     ckpt = tf.train.latest_checkpoint('./model/' + version)
-    saver.restore(sess, save_path)
+    if (ckpt == None):
+        starting_epoch = 0
+    else:
+        starting_epoch = int(ckpt.split('\\')[-1]) + 1 
+        saver.restore(sess, ckpt)
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
 
@@ -216,7 +220,7 @@ def train():
     diagram_loss_g = SummaryWriter(tensorboard_dst)
     diagram_score_mean = SummaryWriter(tensorboard_dst)
     diagram_score_std = SummaryWriter(tensorboard_dst)
-    for i in range(EPOCH):
+    for i in range(starting_epoch, EPOCH):
         print("Running epoch {}/{}...".format(i, EPOCH))
         for j in range(batch_num):
             
@@ -243,7 +247,7 @@ def train():
             # print 'train:[%d/%d],d_loss:%f,g_loss:%f' % (i, j, dLoss, gLoss)
             
         # save check point every 500 epoch
-        if i%500 == 0:
+        if i%50 == 0:
             if not os.path.exists('./model/' + version):
                 os.makedirs('./model/' + version)
             saver.save(sess, './model/' +version + '/' + str(i))  
