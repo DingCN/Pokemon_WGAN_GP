@@ -204,7 +204,8 @@ def train():
     if (ckpt == None):
         starting_epoch = 0
     else:
-        starting_epoch = int(ckpt.split('\\')[-1]) + 1 
+        #starting_epoch = int(ckpt.split('\\')[-1]) + 1 # windows
+        starting_epoch = int(ckpt.split('/')[-1]) + 1 # linux/colabs
         saver.restore(sess, ckpt)
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)

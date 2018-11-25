@@ -238,7 +238,8 @@ def train():
     if (ckpt == None):
         starting_epoch = 0
     else:
-        starting_epoch = int(ckpt.split('\\')[-1]) + 1 
+        #starting_epoch = int(ckpt.split('\\')[-1]) + 1 # windows
+        starting_epoch = int(ckpt.split('/')[-1]) + 1 # linux/colabs
         saver.restore(sess, ckpt)
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
@@ -294,11 +295,11 @@ def train():
             # print 'train:[%d/%d],d_loss:%f,g_loss:%f' % (i, j, dLoss, gLoss)
             
         # save check point every 500 epoch
-        if i%50 == 0:
+        if i%25 == 0:
             if not os.path.exists('./model/' + version):
                 os.makedirs('./model/' + version)
             saver.save(sess, './model/' +version + '/' + str(i))  
-        if i%50 == 0:
+        if i%25 == 0:
             # save images
             if not os.path.exists(newPoke_path):
                 os.makedirs(newPoke_path)
